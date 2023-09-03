@@ -65,7 +65,7 @@ RUN git checkout ${KOHYA_VERSION} && \
     python3 -m venv --system-site-packages venv && \
     source venv/bin/activate && \
     pip3 install torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
-    pip3 install xformers==0.0.20 \
+    pip3 install xformers==0.0.21 \
         bitsandbytes==0.41.1 \
         tensorboard==2.12.3 \
         tensorflow==2.12.0 \
