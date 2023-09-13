@@ -12,6 +12,9 @@ rm -rf /kohya_ss
 echo "Fixing venv..."
 /fix_venv.sh /kohya_ss/venv /workspace/kohya_ss/venv
 
+# Link model
+ln -s /sd-models/sd_xl_base_1.0.safetensors /workspace/sd_xl_base_1.0.safetensors
+
 # Configure accelerate
 echo "Configuring accelerate..."
 mkdir -p /root/.cache/huggingface/accelerate
