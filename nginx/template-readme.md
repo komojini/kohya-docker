@@ -43,8 +43,8 @@ tail -f /workspace/logs/kohya_ss.log
 
 ### Jupyter Lab
 
-If you wish to use the Jupyter lab, you must set 
-the `JUPYTER_PASSWORD` environment variable in the
+If you wish to use the Jupyter lab, you must set
+the **JUPYTER_PASSWORD** environment variable in the
 Template Overrides configuration when deploying
 your pod.
 
@@ -73,7 +73,7 @@ before that as the pod is still getting ready to be used.
 ### Using your own models
 
 The best ways to get your models onto your pod is
-by using `runpodctl` or by uploading them to Google
+by using **runpodctl** or by uploading them to Google
 Drive or other cloud storage and downloading them
 to your pod from there.
 
@@ -81,6 +81,6 @@ to your pod from there.
 
 If you're done with the pod and would like to send
 things to Google Drive, you can use this colab to do it
-using `runpodctl`. You run the `runpodctl` either in
+using **runpodctl**. You run the **runpodctl** either in
 a web terminal (found in the pod connect menu), or
 in a terminal on the desktop.
