@@ -7,7 +7,7 @@
 * Python 3.10.12
 * Torch 2.0.1
 * xformers 0.0.21
-* [Kohya_ss](https://github.com/bmaltais/kohya_ss) v21.8.9
+* [Kohya_ss](https://github.com/bmaltais/kohya_ss) v21.8.10
 * sd_xl_base_1.0.safetensors
 
 ## Available on RunPod
@@ -33,7 +33,7 @@ docker run -d \
   -p 3000:3001 \
   -p 8888:8888 \
   -e JUPYTER_PASSWORD=Jup1t3R! \
-  ashleykza/kohya:1.3.1
+  ashleykza/kohya:1.4.0
 ```
 
 You can obviously substitute the image name and tag with your own.
