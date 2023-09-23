@@ -8,6 +8,8 @@
 * Torch 2.0.1
 * xformers 0.0.21
 * [Kohya_ss](https://github.com/bmaltais/kohya_ss) v21.8.10
+* [runpodctl](https://github.com/runpod/runpodctl)
+* [rclone](https://rclone.org/)
 * sd_xl_base_1.0.safetensors
 
 ## Available on RunPod
