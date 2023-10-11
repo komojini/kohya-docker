@@ -1,7 +1,7 @@
 # Stage 1: Base
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
 
-ARG KOHYA_VERSION=v22.0.1
+ARG KOHYA_VERSION=v22.1.0
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -73,8 +73,8 @@ RUN git checkout ${KOHYA_VERSION} && \
     pip3 install torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
     pip3 install xformers==0.0.21 \
         bitsandbytes==0.41.1 \
-        tensorboard==2.12.3 \
-        tensorflow==2.12.0 \
+        tensorboard==2.14.1 \
+        tensorflow==2.14.0 \
         wheel \
         tensorrt && \
     pip3 install -r requirements.txt && \
