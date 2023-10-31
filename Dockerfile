@@ -65,13 +65,15 @@ COPY sd_xl_base_1.0.safetensors /sd-models/sd_xl_base_1.0.safetensors
 WORKDIR /
 
 # Install Kohya_ss
-RUN git clone https://github.com/bmaltais/kohya_ss.git
+RUN git clone https://github.com/bmaltais/kohya_ss.git && \
+    cd /kohya_ss && \
+    git checkout ${KOHYA_VERSION}
 WORKDIR /kohya_ss
-RUN git checkout ${KOHYA_VERSION} && \
-    python3 -m venv --system-site-packages venv && \
+COPY kohya_ss/requirements* ./
+RUN python3 -m venv --system-site-packages venv && \
     source venv/bin/activate && \
-    pip3 install torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
-    pip3 install xformers==0.0.21 \
+    pip3 install torch==2.0.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
+    pip3 install xformers==0.0.22 \
         bitsandbytes==0.41.1 \
         tensorboard==2.14.1 \
         tensorflow==2.14.0 \
@@ -104,11 +106,11 @@ COPY nginx/template-readme.md /usr/share/nginx/html/README.md
 
 WORKDIR /
 
-# Copy scripts
-COPY --chmod=755 pre_start.sh start.sh fix_venv.sh ./
+# Copy the scripts
+COPY --chmod=755 scripts/* ./
 
-# Copy accelerate configuration file
-COPY accelerate.yaml ./
+# Copy the accelerate configuration
+COPY kohya_ss/accelerate.yaml ./
 
 # Start the container
 SHELL ["/bin/bash", "--login", "-c"]
