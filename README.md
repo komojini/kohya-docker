@@ -7,7 +7,7 @@
 * Python 3.10.12
 * Torch 2.0.1
 * xformers 0.0.22
-* [Kohya_ss](https://github.com/bmaltais/kohya_ss) v22.1.0
+* [Kohya_ss](https://github.com/bmaltais/kohya_ss) v22.1.1
 * [runpodctl](https://github.com/runpod/runpodctl)
 * [rclone](https://rclone.org/)
 * sd_xl_base_1.0.safetensors
