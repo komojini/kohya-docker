@@ -22,6 +22,7 @@ RUN apt update && \
         dos2unix \
         git \
         ncdu \
+        nginx \
         net-tools \
         openssh-server \
         libglib2.0-0 \
@@ -83,7 +84,12 @@ RUN python3 -m venv --system-site-packages venv && \
     pip3 install . && \
     deactivate
 
-RUN pip3 install runpod requests
+# Install Jupyter
+RUN pip3 install -U --no-cache-dir jupyterlab \
+        jupyterlab_widgets \
+        ipykernel \
+        ipywidgets \
+        gdown
 
 # Install rclone
 RUN curl https://rclone.org/install.sh | bash
@@ -93,11 +99,18 @@ RUN wget https://github.com/runpod/runpodctl/releases/download/v1.10.0/runpodctl
     chmod a+x runpodctl && \
     mv runpodctl /usr/local/bin
 
-# Go back to the root
+# Remove existing SSH host keys
+RUN rm -f /etc/ssh/ssh_host_*
+
+# NGINX Proxy
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/502.html /usr/share/nginx/html/502.html
+COPY nginx/template-readme.md /usr/share/nginx/html/README.md
+
 WORKDIR /
 
-ADD src/start.sh src/rp_handler.py ./ 
-RUN chmod +x /start.sh
+# Copy the scripts
+COPY --chmod=755 scripts/* ./
 
 # Copy the accelerate configuration
 COPY kohya_ss/accelerate.yaml ./
