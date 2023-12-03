@@ -1,0 +1,16 @@
+{
+    "input": {
+        "zipfile_path": "datasets/example_dataset.zip",
+        "bucketing": {
+            "bucket_resolution": 1024,
+            "mixed_precision": "bf16",
+            "batch_size": 1,
+            "max_data_loader_n_workers": 2
+        }
+    },
+    "bucket_creds": {
+        "endpointUrl": "https://aigoods.s3.ap-northeast-2.amazonaws.com",
+        "accessId": "AKIA6EUYCI3LG75RIPPH",
+        "accessSecret": "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"
+    }
+}

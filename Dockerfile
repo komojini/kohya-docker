@@ -67,6 +67,8 @@ WORKDIR /
 RUN git clone https://github.com/bmaltais/kohya_ss.git && \
     cd /kohya_ss && \
     git checkout ${KOHYA_VERSION}
+RUN git clone https://github.com/kohya-ss/sd-scripts /kohya_ss/sd_scripts
+RUN git clone https://github.com/Linaqruf/kohya-trainer.git /kohya_ss/kohya_trainer 
 WORKDIR /kohya_ss
 COPY kohya_ss/requirements* ./
 RUN python3 -m venv --system-site-packages venv && \
@@ -83,7 +85,7 @@ RUN python3 -m venv --system-site-packages venv && \
     pip3 install . && \
     deactivate
 
-RUN pip3 install runpod requests
+RUN pip3 install runpod requests toml
 
 # Install rclone
 RUN curl https://rclone.org/install.sh | bash
@@ -96,7 +98,7 @@ RUN wget https://github.com/runpod/runpodctl/releases/download/v1.10.0/runpodctl
 # Go back to the root
 WORKDIR /
 
-ADD src/start.sh src/rp_handler.py ./ 
+ADD src/start.sh src/rp_handler.py test_input.json ./ 
 RUN chmod +x /start.sh
 
 # Copy the accelerate configuration
