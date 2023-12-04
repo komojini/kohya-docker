@@ -1,0 +1,19 @@
+[general]
+resolution = 1024
+shuffle_caption = true
+caption_extension = ".txt"
+
+[[datasets]]
+keep_tokens = 2
+
+ [[datasets.subsets]]
+ image_dir = 'training_datasets/training_images/jane/'
+ class_tokens = 'ohwx person'
+ num_repeats = 40
+
+# [[datasets.subsets]]
+# is_reg = true
+# image_dir = 'training_datasets/reg_images/person/'
+# class_tokens = 'person'
+# num_repeats = 1
+# keep_tokens = 1

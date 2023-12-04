@@ -1,7 +1,7 @@
 # Stage 1: Base
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
 
-ARG KOHYA_VERSION=v22.2.1
+ARG KOHYA_VERSION=vv22.2.1
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -48,6 +48,9 @@ RUN apt update && \
     rm -rf /var/lib/apt/lists/* && \
     echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
+# Clean up to reduce image size
+RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
 # Set Python
 RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
@@ -64,9 +67,10 @@ COPY sd_xl_base_1.0.safetensors /sd-models/sd_xl_base_1.0.safetensors
 WORKDIR /
 
 # Install Kohya_ss
-RUN git clone https://github.com/bmaltais/kohya_ss.git && \
+RUN git clone https://github.com/komojini/kohya_ss.git && \
     cd /kohya_ss && \
-    git checkout ${KOHYA_VERSION}
+    git checkout ${KOHYA_VERSION} && \
+    git pull
 RUN git clone https://github.com/kohya-ss/sd-scripts /kohya_ss/sd_scripts
 RUN git clone https://github.com/Linaqruf/kohya-trainer.git /kohya_ss/kohya_trainer 
 WORKDIR /kohya_ss
@@ -82,11 +86,24 @@ RUN python3 -m venv --system-site-packages venv && \
         scipy \
         tensorrt && \
     pip3 install -r requirements.txt && \
-    pip3 install . && \
-    deactivate
+    pip3 install .
 
-RUN pip3 install runpod requests toml
+# RUN deactivate
+RUN pip3 install -r ./requirements.txt
+RUN pip3 install runpod requests toml accelerate tomlkit
+RUN pip3 install diffusers \
+    transformers \
+    einops \
+    torchvision \
+    opencv-python \
+    voluptuous
 
+RUN pip3 install onnxruntime-gpu 
+
+RUN pip3 install -U xformers --index-url https://download.pytorch.org/whl/cu118
+
+# RUN python3 -c "from accelerate.utils import write_basic_config; write_basic_config(mixed_precision='bf16')"
+RUN accelerate config default --mixed_precision="bf16"
 # Install rclone
 RUN curl https://rclone.org/install.sh | bash
 
@@ -98,7 +115,7 @@ RUN wget https://github.com/runpod/runpodctl/releases/download/v1.10.0/runpodctl
 # Go back to the root
 WORKDIR /
 
-ADD src/start.sh src/rp_handler.py test_input.json ./ 
+ADD src/* test_input.json ./ 
 RUN chmod +x /start.sh
 
 # Copy the accelerate configuration
