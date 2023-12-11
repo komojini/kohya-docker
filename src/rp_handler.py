@@ -4,8 +4,10 @@ import requests
 import os
 import pathlib
 import re
+import glob
 import torch
 import accelerate
+from PIL import Image
 from typing import Optional, Tuple, Literal
 from urllib.parse import urlparse, unquote
 from pathlib import Path
@@ -38,7 +40,7 @@ ACCELERATE_CONFIG = "/accelerate.yaml"
 OUTPUT_DIR = "/outputs"
 TMP_DIR = "/tmp"
 LOGGING_DIR = "/outputs/log"
-
+ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 
 logger.info(f"\ntorch.cuda.is_avaliable(): {torch.cuda.is_available()}\n")
 
@@ -68,14 +70,13 @@ def prepare_directory():
 
 
 def extract_and_return_images_parent_dir(zip_file):
-    allowed_extensions = [".jpg", ".jpeg", ".png"]
     tmp_dir = f"{TMP_DIR}/images"
     
     with zipfile.ZipFile(zip_file, "r") as zip_ref:
         zip_ref.extractall(tmp_dir)
     for root, dirs, files in os.walk(tmp_dir):
         for file in files:
-            if pathlib.Path(file).suffix in allowed_extensions:
+            if pathlib.Path(file).suffix in ALLOWED_EXTENSIONS:
                 return root
     return None
 
@@ -218,23 +219,76 @@ def upload_model(model_path, save_path):
         save_path,
     )
 
-def prepare_train_data(zipfile_url, unzip_dir=None):
-    logger.info(f"\nStart Preparing Train Data\nzipfile_url: {zipfile_url}\nunzip_dir: {unzip_dir}")
+
+def crop_image(image_path, save_path, resolution):
+    # Open the image
+    image = Image.open(image_path)
+
+    # Crop the image (example cropping to a square in the center)
+    width, height = image.size
+    min_dimension = min(width, height)
+    left = (width - min_dimension) / 2
+    top = (height - min_dimension) / 2
+    right = (width + min_dimension) / 2
+    bottom = (height + min_dimension) / 2
+    cropped_image = image.crop((left, top, right, bottom))
+
+    # Resize the cropped image to 512x512 pixels
+    new_size = (resolution, resolution)
+    resized_image = cropped_image.resize(new_size)
+
+    # Save the cropped and resized image
+    resized_image.save(save_path)
+    return save_path
+
+
+def prepare_train_data(
+        zipfile_url, 
+        instance_prompt,
+        class_prompt,
+        training_images_repeat,
+        training_dir=None, 
+        regularization_images_dir="",
+        regularization_repeat=1,
+        resolution=1024
+    ):
+    logger.info(f"\nStart Preparing Train Data\nzipfile_url: {zipfile_url}\nunzip_dir: {training_dir}")
     
-    if unzip_dir:
-        os.makedirs(unzip_dir, exist_ok=True)
+    if training_dir:
+        os.makedirs(training_dir, exist_ok=True)
     else:
-        unzip_dir = TRAIN_DATA_DIR
+        training_dir = TRAIN_DATA_DIR
     
     zip_file = download(zipfile_url, ROOT_DIR)
     new_unzip_dir = extract_and_return_images_parent_dir(zip_file)
 
-    os.system(
-        f"mv {new_unzip_dir}/* '{unzip_dir}'"
+    # os.system(
+    #     f"mv {new_unzip_dir}/* '{unzip_dir}'"
+    # )
+    
+    # os.system(f"rm -rf '{new_unzip_dir}'")
+    # os.remove(zip_file)
+    
+    for f in os.listdir(new_unzip_dir):
+        ext = os.path.splitext(f)[1]
+        if ext.lower() not in ALLOWED_EXTENSIONS:
+            continue
+        image_path = os.path.join(new_unzip_dir,f)
+        crop_image(image_path, image_path, resolution)
+
+    from kohya_ss.library.dreambooth_folder_creation_gui import dreambooth_folder_preparation
+    
+
+    dreambooth_folder_preparation(
+        new_unzip_dir,
+        training_images_repeat,
+        instance_prompt,
+        regularization_images_dir,
+        regularization_repeat,
+        class_prompt,
+        training_dir,
     )
-    print(f"\nTraining data prepared in: '{unzip_dir}' -->")
-    os.system(f"rm -rf '{new_unzip_dir}'")
-    os.remove(zip_file)
+    return 
 
 
 def generate_args(config):
@@ -257,25 +311,6 @@ def generate_args(config):
             args += arg
     return args.strip()
 
-def get_training_data_dir(
-        token_word, 
-        class_word,
-        training_repeats = 40,
-        training_root_dir = TRAIN_DATA_DIR,
-    ):
-    return os.path.join(training_root_dir, f"{training_repeats}_{token_word} {class_word}")
-
-
-def prepare_train_input(train_input):
-
-    train_data_dir = get_training_data_dir(
-        train_input.get("token_word", "shs"),
-        train_input["class_word"],
-        training_repeats=train_input.get("training_repeats"),
-    )
-    train_input["train_data_dir"] = train_data_dir
-    return train_input
-
 
 def handler(job):
 
@@ -286,23 +321,28 @@ def handler(job):
     
     prepare_directories()
     
-    train_input = prepare_train_input(job_input["train"])
-    train_data_dir = train_input.pop("train_data_dir")
-    prepare_train_data(zipfile_path, train_data_dir)
+    train_input = job_input["train"]
 
-    os.system(f"""ls -la "{train_data_dir}" """)
-    train_args = generate_args(train_input)
-    
-    print(f"\nTraining args -->\n{train_args}\n")
+    prepare_train_data(
+        zipfile_path, 
+        train_input["token_word"], 
+        train_input["class_word"], 
+        training_images_repeat=train_input["training_repeats"],
+        training_dir=TRAIN_DATA_DIR, 
+        resolution=train_input["resolution"]
+    )
+
+    train_images_dir = os.join(TRAIN_DATA_DIR, "img")
+    os.system(f"""ls -la "{train_images_dir}" """)
 
     # Train
     os.system(f"""
 accelerate launch --config_file="accelerate.yaml" --num_cpu_threads_per_process=2 "/kohya_ss/sdxl_train_network.py" \
     --enable_bucket \
-    --min_bucket_reso=256 \
+    --min_bucket_reso=512 \
     --max_bucket_reso=2048 \
     --pretrained_model_name_or_path="{MODEL_PATH}" \
-    --train_data_dir="{TRAIN_DATA_DIR}" \
+    --train_data_dir="{train_images_dir}" \
     --resolution="{train_input["resolution"]},{train_input["resolution"]}" \
     --output_dir="{OUTPUT_DIR}" \
     --logging_dir="{LOGGING_DIR}" \
