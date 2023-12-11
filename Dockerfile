@@ -67,10 +67,9 @@ COPY sd_xl_base_1.0.safetensors /sd-models/sd_xl_base_1.0.safetensors
 WORKDIR /
 
 # Install Kohya_ss
-RUN git clone https://github.com/komojini/kohya_ss.git && \
+RUN git clone  https://github.com/komojini/kohya_ss.git && \
     cd /kohya_ss && \
-    git checkout ${KOHYA_VERSION} && \
-    git pull
+    git checkout ${KOHYA_VERSION}
 RUN git clone https://github.com/kohya-ss/sd-scripts /kohya_ss/sd_scripts
 RUN git clone https://github.com/Linaqruf/kohya-trainer.git /kohya_ss/kohya_trainer 
 WORKDIR /kohya_ss

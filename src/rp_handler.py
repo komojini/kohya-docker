@@ -167,23 +167,6 @@ def download_file_s3(bucket_path, file_path):
     )
     return file_path
 
-def download_from_s3(url, output_path):
-    pass
-
-def get_filename(url, bearer_token, quiet=True):
-    headers = {"Authorization": f"Bearer {bearer_token}"}
-    response = requests.get(url, headers=headers, stream=True)
-    response.raise_for_status()
-
-    if 'content-disposition' in response.headers:
-        content_disposition = response.headers['content-disposition']
-        filename = re.findall('filename="?([^"]+)"?', content_disposition)[0]
-    else:
-        url_path = urlparse(url).path
-        filename = unquote(os.path.basename(url_path))
-
-    return filename
-
 def parse_args(config):
     args = []
 
@@ -220,30 +203,9 @@ def aria2_download(dir, filename, url, token):
     aria2_args = parse_args(aria2_config)
     subprocess.run(["aria2c", *aria2_args])
                     
-
-def download_from_huggingface(url, dst):
-    token = os.environ.get("HF_TOKEN", None)
-    filename = get_filename(url, token, quiet=False)
-    filepath = os.path.join(dst, filename)
-
-    if url.startswith("/workspace"):
-        return url
-    elif "huggingface.co" in url:
-        if "/blob/" in url:
-            url = url.replace("/blob/", "/resolve/")
-                
-        aria2_download(dst, filename, url, token)
-
-    return filepath
-
 def download(zip_path, output_dir):
-    if "huggingface" in zip_path:
-        downloaded_path = download_from_huggingface(zip_path, output_dir)
-    elif "s3" in zip_path:
-        downloaded_path = download_from_s3(zip_path, output_dir)
-    else:
-        output_path = Path(output_dir) / f"{uuid.uuid4()}.zip"
-        downloaded_path = download_file_s3(zip_path, output_path)
+    output_path = Path(output_dir) / f"{uuid.uuid4()}.zip"
+    downloaded_path = download_file_s3(zip_path, output_path)
     return downloaded_path
 
 def upload_model(model_path, save_path):
@@ -368,14 +330,19 @@ accelerate launch --config_file="accelerate.yaml" --num_cpu_threads_per_process=
     --bucket_reso_steps=64 \
     --xformers \
     --bucket_no_upscale \
-    --noise_offset=0.0
+    --noise_offset=0.0 \
+    --log_with="wandb" \
+    --wandb_api_key="{os.getenv("WANDB_API_KEY")}"
 """)
+              
+    output_path = job_input.get("output_path", "models")
+    save_path = f"{output_path}/{train_input['project_name']}.safetensors"
     model_path = f'{OUTPUT_DIR}/{train_input["project_name"]}.safetensors'
-    upload_model(model_path, f"models/{train_input['project_name']}.safetensors")
+    upload_model(model_path, save_path)
 
     os.system(f"ls -la '{OUTPUT_DIR}'")
     output = {
-        "model_path": f"models/{train_input['project_name']}.safetensors",
+        "model_path": save_path,
         "endpoint_url": os.getenv("BUCKET_ENDPOINT_URL"),
         "train": train_input,
     }
