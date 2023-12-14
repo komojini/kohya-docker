@@ -276,8 +276,7 @@ def prepare_train_data(
         image_path = os.path.join(new_unzip_dir,f)
         crop_image(image_path, image_path, resolution)
 
-    from kohya_ss.library.dreambooth_folder_creation_gui import dreambooth_folder_preparation
-    
+    from kohya_ss.library.dreambooth_folder_creation_gui import dreambooth_folder_preparation    
 
     dreambooth_folder_preparation(
         new_unzip_dir,
@@ -316,8 +315,11 @@ def handler(job):
 
     job_input = job["input"]
     zipfile_path = job_input["zipfile_path"]
-    if job.get("bucket_creds", None):
-        set_bucket_creds(job["bucket_creds"])
+    if job_input.get("bucket_creds", None):
+        print("Bucket Creds Provided")
+        set_bucket_creds(job_input["bucket_creds"])
+    else:
+        print("Bucket Creds Not Provided")
     
     prepare_directories()
     
@@ -332,7 +334,7 @@ def handler(job):
         resolution=train_input["resolution"]
     )
 
-    train_images_dir = os.join(TRAIN_DATA_DIR, "img")
+    train_images_dir = os.path.join(TRAIN_DATA_DIR, "img")
     os.system(f"""ls -la "{train_images_dir}" """)
 
     # Train
