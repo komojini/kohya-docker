@@ -363,7 +363,7 @@ accelerate launch --config_file="accelerate.yaml" --num_cpu_threads_per_process=
     --lr_scheduler="{train_input["lr_scheduler"]}" \
     --train_batch_size="{train_input["train_batch_size"]}" \
     --max_train_steps="{train_input["max_train_steps"]}" \
-    --save_every_n_epochs="3" \
+    --save_every_n_epochs="1000" \
     --mixed_precision="{train_input["mixed_precision"]}" \
     --save_precision="{train_input["save_precision"]}" \
     --optimizer_type="{train_input["optimizer_type"]}" \
