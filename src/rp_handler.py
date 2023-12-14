@@ -27,8 +27,6 @@ FMT = "%(filename)-20s:%(lineno)-4d %(asctime)s %(message)s"
 logging.basicConfig(level=logging.DEBUG, format=FMT, handlers=[logging.StreamHandler()])
 
 
-print("Accelerate device:", accelerate.Accelerator().device)
-
 # Directories
 ROOT_DIR = "/"
 TRAIN_DATA_DIR = "/fine_tune/train_data"
@@ -45,7 +43,7 @@ ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
 logger.info(f"\ntorch.cuda.is_avaliable(): {torch.cuda.is_available()}\n")
 
 
-def prepare_directories():
+def prepare_directories(job_id=None):
     directories = [
         TRAIN_DATA_DIR,
         TRAINING_DIR,
@@ -60,9 +58,13 @@ def prepare_directories():
 
 
 def set_bucket_creds(bucket_creds):
+    if not bucket_creds:
+        print("Bucket Creds not provided")
     os.environ["BUCKET_ENDPOINT_URL"] = bucket_creds["endpointUrl"]
     os.environ["BUCKET_ACCESS_KEY_ID"] = bucket_creds["accessId"]
     os.environ["BUCKET_SECRET_ACCESS_KEY"] = bucket_creds["accessSecret"]
+    os.environ["BUCKET_NAME"] = bucket_creds["bucketName"]
+
 
 def prepare_directory():
     os.makedirs(TRAIN_DATA_DIR, exist_ok=True)
@@ -211,7 +213,9 @@ def download(zip_path, output_dir):
 
 def upload_model(model_path, save_path):
     s3_client, _ = get_boto_client()
-    bucket_name = extract_bucket_name_from_url(os.environ.get('BUCKET_ENDPOINT_URL', None))
+    bucket_name = os.getenv("BUCKET_NAME")
+    if not bucket_name:
+        bucket_name = extract_bucket_name_from_url(os.environ.get('BUCKET_ENDPOINT_URL', None))
 
     s3_client.upload_file(
         model_path,
@@ -220,7 +224,7 @@ def upload_model(model_path, save_path):
     )
 
 
-def crop_image(image_path, save_path, resolution):
+def crop_and_resize_image(image_path, save_path, resolution):
     # Open the image
     image = Image.open(image_path)
 
@@ -274,7 +278,7 @@ def prepare_train_data(
         if ext.lower() not in ALLOWED_EXTENSIONS:
             continue
         image_path = os.path.join(new_unzip_dir,f)
-        crop_image(image_path, image_path, resolution)
+        crop_and_resize_image(image_path, image_path, resolution)
 
     from kohya_ss.library.dreambooth_folder_creation_gui import dreambooth_folder_preparation    
 
@@ -314,19 +318,17 @@ def generate_args(config):
 def handler(job):
 
     job_input = job["input"]
-    zipfile_path = job_input["zipfile_path"]
-    if job_input.get("bucket_creds", None):
-        print("Bucket Creds Provided")
-        set_bucket_creds(job_input["bucket_creds"])
-    else:
-        print("Bucket Creds Not Provided")
+
+    train_image_zipfile_path = job_input["zipfile_path"]
     
+    set_bucket_creds(job_input.get("bucket_creds"))
+
     prepare_directories()
     
     train_input = job_input["train"]
 
     prepare_train_data(
-        zipfile_path, 
+        train_image_zipfile_path, 
         train_input["token_word"], 
         train_input["class_word"], 
         training_images_repeat=train_input["training_repeats"],
@@ -335,7 +337,6 @@ def handler(job):
     )
 
     train_images_dir = os.path.join(TRAIN_DATA_DIR, "img")
-    os.system(f"""ls -la "{train_images_dir}" """)
 
     # Train
     os.system(f"""
@@ -365,8 +366,6 @@ accelerate launch --config_file="accelerate.yaml" --num_cpu_threads_per_process=
     --save_every_n_epochs="3" \
     --mixed_precision="{train_input["mixed_precision"]}" \
     --save_precision="{train_input["save_precision"]}" \
-    --cache_latents \
-    --cache_latents_to_disk \
     --optimizer_type="{train_input["optimizer_type"]}" \
     --max_data_loader_n_workers="2" \
     --bucket_reso_steps=64 \
@@ -378,13 +377,13 @@ accelerate launch --config_file="accelerate.yaml" --num_cpu_threads_per_process=
 """)
               
     output_path = job_input.get("output_path", "models")
-    save_path = f"{output_path}/{train_input['project_name']}.safetensors"
-    model_path = f'{OUTPUT_DIR}/{train_input["project_name"]}.safetensors'
-    upload_model(model_path, save_path)
+    remote_save_path = f"{output_path}/{train_input['project_name']}.safetensors"
+    local_model_path = f'{OUTPUT_DIR}/{train_input["project_name"]}.safetensors'
+    upload_model(local_model_path, remote_save_path)
 
     os.system(f"ls -la '{OUTPUT_DIR}'")
     output = {
-        "model_path": save_path,
+        "model_path": remote_save_path,
         "endpoint_url": os.getenv("BUCKET_ENDPOINT_URL"),
         "train": train_input,
     }

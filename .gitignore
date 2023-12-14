@@ -2,4 +2,6 @@
 .DS_Store
 *.safetensors
 
-venv/
+venv
+test_input.json
+test/
